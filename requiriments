@@ -1,0 +1,8 @@
+deepagents
+python-dotenv
+fastapi[standard]
+requests
+apscheduler
+pydantic
+uvicorn
+asyncio
