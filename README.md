@@ -6,7 +6,7 @@ Atualmente o projeto oferece:
 - gerenciamento de lembretes por agendamento (cron)
 - controle de calorias por refeicao
 - configuracao de perfil do assistente e do usuario
-- atendimento via chat no terminal ou webhook HTTP
+- atendimento via chat no terminal ou webhook WhatsApp (Evolution)
 
 ## Funcionalidades Atuais
 
@@ -38,7 +38,7 @@ Atualmente o projeto oferece:
 - `main.py`: ponto de entrada da aplicacao.
 - `assistant/`: regras de IA e ferramentas (tools) do agente.
 - `assistant/on_first_run.py`: onboarding da primeira execucao para configurar parametros iniciais.
-- `services/webhook.py`: API HTTP com FastAPI.
+- `services/evolution_webhook.py`: API HTTP com FastAPI para eventos do Evolution.
 - `services/cron.py`: scheduler de tarefas com APScheduler.
 - `database_utils/`: criacao e inicializacao dos bancos SQLite.
 - `assistant/*_tools.py`: logicas de leitura e escrita direto no banco.
@@ -79,7 +79,7 @@ Significado das variaveis:
 
 - `GOOGLE_API_KEY`: chave de acesso ao provedor do modelo.
 - `DB_PATH`: pasta onde os bancos SQLite serao criados.
-- `WEBHOOK_TOKEN`: token obrigatorio para autenticar no endpoint HTTP.
+- `WEBHOOK_TOKEN`: token obrigatorio para autenticar no webhook local do Evolution.
 - `ASSISTANT_MODE`: controla o modo de execucao. `TERMINAL_CHAT` roda chat no terminal e `WHATSAPP` usa o webhook do Evolution.
 - `EVOLUTION_SEND_MESSAGE_ENDPOINT`: endpoint de envio do Evolution. Pode ser a rota completa (ex.: `http://host:8080/message/sendText/{instanceName}`) ou apenas a base (ex.: `http://host:8080`).
 - `EVOLUTION_API_TOKEN`: token de autenticacao usado no envio de mensagens para o Evolution API.
@@ -134,34 +134,7 @@ Nesse modo, o assistente roda em chat local no terminal.
 Se `ASSISTANT_MODE` estiver vazio (ou diferente de `TERMINAL_CHAT`), o sistema inicia:
 
 - scheduler de tarefas (cron)
-- webhook HTTP em `http://127.0.0.1:8000` (quando `ASSISTANT_MODE` nao for `WHATSAPP`)
-- webhook Evolution em `http://127.0.0.1:8001/evolution/webhook` (quando `ASSISTANT_MODE=WHATSAPP`)
-
-## Webhook HTTP
-
-Endpoint:
-
-- `POST /send_message`
-
-Autenticacao:
-
-- query param `token` deve ser igual ao `WEBHOOK_TOKEN` do `.env`
-
-Body JSON:
-
-```json
-{
-	"message": "Qual e minha agenda de hoje?"
-}
-```
-
-Exemplo com curl:
-
-```bash
-curl -X POST "http://127.0.0.1:8000/send_message?token=SEU_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"message":"Oi, o que tenho para hoje?"}'
-```
+- webhook Evolution em `http://0.0.0.0:8001/evolution/webhook`
 
 ## Webhook Evolution (WhatsApp)
 

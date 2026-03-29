@@ -13,7 +13,6 @@ from database_utils.calories_database_utils import ensure_calories_database, ini
 from database_utils.cron_database_utils import ensure_cron_database, initialize_cron_database
 from services import cron
 from services import evolution_webhook
-from services import webhook
 
 
 load_dotenv()
@@ -55,13 +54,9 @@ async def main():
         start_terminal_chat()
         return
 
-    webhook_service = webhook.start
-    if _get_assistant_mode() == "WHATSAPP":
-        webhook_service = evolution_webhook.start
-
     await asyncio.gather(
         asyncio.to_thread(cron.start),
-        asyncio.to_thread(webhook_service),
+        asyncio.to_thread(evolution_webhook.start),
     )
 
 if __name__ == "__main__":
