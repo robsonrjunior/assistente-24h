@@ -68,6 +68,11 @@ GOOGLE_API_KEY=sua_chave_aqui
 DB_PATH=databases
 WEBHOOK_TOKEN=um_token_seguro
 ASSISTANT_MODE=
+EVOLUTION_SEND_MESSAGE_ENDPOINT=http://72.61.41.33:63186/
+EVOLUTION_API_TOKEN=
+EVOLUTION_INSTANCE_NAME=
+EVOLUTION_TARGET_NUMBER=5519982870602
+EVOLUTION_PROCESSED_RETENTION_DAYS=30
 ```
 
 Significado das variaveis:
@@ -75,7 +80,12 @@ Significado das variaveis:
 - `GOOGLE_API_KEY`: chave de acesso ao provedor do modelo.
 - `DB_PATH`: pasta onde os bancos SQLite serao criados.
 - `WEBHOOK_TOKEN`: token obrigatorio para autenticar no endpoint HTTP.
-- `ASSISTANT_MODE`: se for `TERMINAL_CHAT`, roda chat no terminal.
+- `ASSISTANT_MODE`: controla o modo de execucao. `TERMINAL_CHAT` roda chat no terminal e `WHATSAPP` usa o webhook do Evolution.
+- `EVOLUTION_SEND_MESSAGE_ENDPOINT`: endpoint de envio do Evolution. Pode ser a rota completa (ex.: `http://host:8080/message/sendText/{instanceName}`) ou apenas a base (ex.: `http://host:8080`).
+- `EVOLUTION_API_TOKEN`: token de autenticacao usado no envio de mensagens para o Evolution API.
+- `EVOLUTION_INSTANCE_NAME`: nome da instancia usada quando o endpoint informado nao inclui a rota completa com `sendText`.
+- `EVOLUTION_TARGET_NUMBER`: numero padrao (somente digitos) para testes de envio do assistente.
+- `EVOLUTION_PROCESSED_RETENTION_DAYS`: quantidade de dias para manter os IDs de mensagens processadas no SQLite (evita reprocessar duplicados).
 
 ## Como executar
 
@@ -124,7 +134,8 @@ Nesse modo, o assistente roda em chat local no terminal.
 Se `ASSISTANT_MODE` estiver vazio (ou diferente de `TERMINAL_CHAT`), o sistema inicia:
 
 - scheduler de tarefas (cron)
-- webhook HTTP em `http://127.0.0.1:8000`
+- webhook HTTP em `http://127.0.0.1:8000` (quando `ASSISTANT_MODE` nao for `WHATSAPP`)
+- webhook Evolution em `http://127.0.0.1:8001/evolution/webhook` (quando `ASSISTANT_MODE=WHATSAPP`)
 
 ## Webhook HTTP
 
@@ -151,6 +162,31 @@ curl -X POST "http://127.0.0.1:8000/send_message?token=SEU_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"message":"Oi, o que tenho para hoje?"}'
 ```
+
+## Webhook Evolution (WhatsApp)
+
+Para ativar, defina no `.env`:
+
+```env
+ASSISTANT_MODE=WHATSAPP
+EVOLUTION_SEND_MESSAGE_ENDPOINT=http://72.61.41.33:63186/
+EVOLUTION_API_TOKEN=seu_token_do_evolution
+EVOLUTION_INSTANCE_NAME=minha_instancia
+EVOLUTION_TARGET_NUMBER=5519982870602
+EVOLUTION_PROCESSED_RETENTION_DAYS=30
+```
+
+Endpoint local para receber eventos do Evolution:
+
+- `POST /evolution/webhook`
+
+Autenticacao:
+
+- query param `token` deve ser igual ao `WEBHOOK_TOKEN` do `.env`
+
+Observacao:
+
+- Mensagens recebidas sao deduplicadas por ID e salvas em SQLite em `databases/evolution.db` para evitar processar o mesmo evento mais de uma vez.
 
 ## Lembretes (cron)
 
