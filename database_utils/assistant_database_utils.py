@@ -67,29 +67,60 @@ def ensure_assistant_database(db_path: Path = ASSISTANT_DB_PATH) -> None:
 
 def initialize_assistant_database(db_path: Path = ASSISTANT_DB_PATH) -> None:
 	ensure_assistant_database(db_path)
+
+
+def has_assistant_configuration(db_path: Path = ASSISTANT_DB_PATH) -> bool:
+	ensure_assistant_database(db_path)
 	connection = sqlite3.connect(db_path)
 
 	try:
 		cursor = connection.cursor()
-		cursor.execute("SELECT COUNT(*) FROM assistant")
-		count = cursor.fetchone()[0]
+		cursor.execute("SELECT 1 FROM assistant LIMIT 1")
+		return cursor.fetchone() is not None
+	finally:
+		connection.close()
 
-		if count == 0:
+
+def save_initial_assistant_configuration(
+	configuration: dict,
+	db_path: Path = ASSISTANT_DB_PATH,
+) -> None:
+	ensure_assistant_database(db_path)
+	connection = sqlite3.connect(db_path)
+
+	try:
+		cursor = connection.cursor()
+		cursor.execute("SELECT rowid FROM assistant ORDER BY rowid ASC LIMIT 1")
+		existing_row = cursor.fetchone()
+
+		values = (
+			configuration["name"],
+			configuration["personality"],
+			configuration["user_name"],
+			configuration["user_preferred_name"],
+			configuration["language"],
+			configuration["time_zone"],
+			configuration["current_mood"],
+		)
+
+		if existing_row:
+			cursor.execute(
+				"""
+				UPDATE assistant
+				SET name = ?, personality = ?, user_name = ?, user_preferred_name = ?, language = ?, time_zone = ?, current_mood = ?
+				WHERE rowid = ?
+				""",
+				(*values, existing_row[0]),
+			)
+		else:
 			cursor.execute(
 				"""
 				INSERT INTO assistant (name, personality, user_name, user_preferred_name, language, time_zone, current_mood)
 				VALUES (?, ?, ?, ?, ?, ?, ?)
 				""",
-				(
-					DEFAULT_ASSISTANT_CONFIGURATION["name"],
-					DEFAULT_ASSISTANT_CONFIGURATION["personality"],
-					DEFAULT_ASSISTANT_CONFIGURATION["user_name"],
-					DEFAULT_ASSISTANT_CONFIGURATION["user_preferred_name"],
-					DEFAULT_ASSISTANT_CONFIGURATION["language"],
-					DEFAULT_ASSISTANT_CONFIGURATION["time_zone"],
-					DEFAULT_ASSISTANT_CONFIGURATION["current_mood"],
-				),
+				values,
 			)
-			connection.commit()
+
+		connection.commit()
 	finally:
 		connection.close()

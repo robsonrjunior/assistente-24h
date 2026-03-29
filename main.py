@@ -4,7 +4,11 @@ import os
 from dotenv import load_dotenv
 
 from assistant.assistant import answer_question
-from database_utils.assistant_database_utils import ensure_assistant_database, initialize_assistant_database
+from assistant.on_first_run import setup_assistant_on_first_run
+from database_utils.assistant_database_utils import (
+    ensure_assistant_database,
+    initialize_assistant_database,
+)
 from database_utils.calories_database_utils import ensure_calories_database, initialize_calories_database
 from database_utils.cron_database_utils import ensure_cron_database, initialize_cron_database
 from services import cron
@@ -40,6 +44,7 @@ def start_terminal_chat() -> None:
 async def main():
     ensure_assistant_database()
     initialize_assistant_database()
+    setup_assistant_on_first_run()
     ensure_cron_database()
     initialize_cron_database()
     ensure_calories_database()

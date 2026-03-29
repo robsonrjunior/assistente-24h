@@ -162,6 +162,12 @@ def get_calories_by_date(day: int, month: int, year: int) -> dict:
     }
 
 
+def get_today_calories() -> dict:
+    """Returns calories for the current local date."""
+    now = datetime.now()
+    return get_calories_by_date(day=now.day, month=now.month, year=now.year)
+
+
 def update_calories(
     entry_id: int,
     food_name: str | None = None,
@@ -208,5 +214,6 @@ tools = [
     add_calories,
     get_calories,
     get_calories_by_date,
+    get_today_calories,
     update_calories,
 ]

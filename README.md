@@ -37,10 +37,11 @@ Atualmente o projeto oferece:
 
 - `main.py`: ponto de entrada da aplicacao.
 - `assistant/`: regras de IA e ferramentas (tools) do agente.
+- `assistant/on_first_run.py`: onboarding da primeira execucao para configurar parametros iniciais.
 - `services/webhook.py`: API HTTP com FastAPI.
 - `services/cron.py`: scheduler de tarefas com APScheduler.
 - `database_utils/`: criacao e inicializacao dos bancos SQLite.
-- `repository/`: camada de repositorio para acesso a dados.
+- `assistant/*_tools.py`: logicas de leitura e escrita direto no banco.
 - `databases/`: diretorio padrao dos arquivos SQLite.
 
 Bancos utilizados:
@@ -173,6 +174,5 @@ assistente-24h/
 ├─ assistant/
 ├─ services/
 ├─ database_utils/
-├─ repository/
 └─ databases/
 ```
