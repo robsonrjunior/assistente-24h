@@ -1,6 +1,7 @@
 import hmac
 import hashlib
 import json
+import logging
 import os
 from typing import Any
 
@@ -15,7 +16,19 @@ from integrations.evolution_api import send_text_message
 
 load_dotenv()
 
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+)
+
 app = FastAPI()
+
+logger = logging.getLogger("evolution_webhook")
+
+# Rota de health check
+@app.get("/health")
+def health_check():
+    return {"status": "ok"}
 
 
 def _get_processed_message_retention_days() -> int:
@@ -97,7 +110,6 @@ def _extract_message_data(payload: dict[str, Any]) -> tuple[str, str]:
         payload.get("number")
         or payload.get("phone")
         or payload.get("from")
-        or payload.get("sender")
     )
 
     data = payload.get("data")
@@ -112,7 +124,11 @@ def _extract_message_data(payload: dict[str, Any]) -> tuple[str, str]:
 
         key = data.get("key")
         if isinstance(key, dict):
-            number = number or key.get("remoteJid")
+            # For incoming messages from Evolution, remoteJid is the correct destination.
+            number = key.get("remoteJid") or key.get("remoteJidAlt") or number
+
+    if not number:
+        number = payload.get("sender")
 
     if isinstance(number, str):
         number = number.split("@")[0].strip()
@@ -137,12 +153,19 @@ def evolution_receive_message(
     token: str = Query(..., description="Auth token"),
     payload: dict[str, Any] = Body(..., description="Evolution webhook payload"),
 ):
+    logger.info("Webhook request received: event=%s", payload.get("event"))
+    logger.info(
+        "Webhook body: %s",
+        json.dumps(payload, ensure_ascii=True, sort_keys=True, default=str),
+    )
     _validate_token(token)
 
     if not _is_messages_upsert_event(payload):
+        logger.info("Event ignored: not a messages upsert event")
         return {"status": "ignored", "reason": "event_not_supported"}
 
     if _is_from_me(payload):
+        logger.info("Event ignored: outgoing message (fromMe=true)")
         return {"status": "ignored", "reason": "outgoing_message"}
 
     number, message = _extract_message_data(payload)
@@ -150,6 +173,7 @@ def evolution_receive_message(
 
     is_new_message = register_processed_message(message_key)
     if not is_new_message:
+        logger.info("Event ignored: duplicate message (%s)", message_key)
         return {
             "status": "ignored",
             "reason": "duplicated_message",
@@ -160,6 +184,7 @@ def evolution_receive_message(
 
     answer = answer_question(message)
     evolution_response = send_text_message(number=number, text=answer)
+    logger.info("Message processed and sent to %s", number)
 
     return {
         "status": "ok",
@@ -170,7 +195,8 @@ def evolution_receive_message(
 
 def start() -> None:
     """Starts the FastAPI server to receive Evolution webhook events."""
-    uvicorn.run(app, host="0.0.0.0", port=8001)
+    port = int(os.getenv("EVOLUTION_WEBHOOK_PORT", "8001"))
+    uvicorn.run(app, host="0.0.0.0", port=port)
 
 
 if __name__ == "__main__":

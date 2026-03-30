@@ -5,7 +5,12 @@ from dotenv import load_dotenv
 import assistant.assistant_tools
 import assistant.calories_tools
 import assistant.cron_tools
+
 import assistant.datetime_tools
+# Import chat database utils
+from database_utils.chat_database_utils import save_chat_message
+# Import get_history
+from assistant.history import get_history
 
 load_dotenv()
 
@@ -40,27 +45,41 @@ def create_system_prompt() -> str:
 
     return system_prompt
 
-def answer_question(question: str) -> str:
+def answer_question(question: str, user: str = "user") -> str:
     """
-    Uses the Tavily API to answer a question.
+    Uses the DeepAgents API to answer a question and saves the conversation in the chat database.
     Args:
         question (str): The question to be answered.
+        user (str): The user who asked the question.
     Returns:
         str: The answer to the question.
     """
     system_prompt = create_system_prompt()
+
+    # Get last 5 messages for context
+    history = get_history(limit=5)
+    messages = [
+        {"role": "user" if m["user"] != "assistant" else "assistant", "content": m["message"]}
+        for m in history
+    ]
+    # Add current question
+    messages.append({"role": "user", "content": question})
 
     agent = create_deep_agent(
         model="google_genai:gemini-3.1-pro-preview",
         tools=AGENT_TOOLS,
         system_prompt=system_prompt,
     )
-    result = agent.invoke({"messages": [{"role": "user", "content": question}]})
-    return _get_answer(result)
+    result = agent.invoke({"messages": messages})
+    answer = _get_answer(result)
+    # Save both question and answer in chat database
+    save_chat_message(user, question)
+    save_chat_message("assistant", answer)
+    return answer
 
 def execute_task(task_id: int) -> str:
     """
-    Executes a task using the Tavily API.
+    Executes a task using the DeepAgents API.
     Args:
         task_id (int): The ID of the task to be executed.
     Returns:

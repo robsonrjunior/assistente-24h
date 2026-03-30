@@ -1,5 +1,9 @@
+
 import asyncio
 import os
+import sys
+import subprocess
+import requests
 
 from dotenv import load_dotenv
 
@@ -14,9 +18,16 @@ from database_utils.cron_database_utils import ensure_cron_database, initialize_
 from services import cron
 from services import evolution_webhook
 
-
 load_dotenv()
 
+
+def is_service_up():
+    try:
+        port = int(os.getenv("EVOLUTION_WEBHOOK_PORT", "8001"))
+        response = requests.get(f"http://127.0.0.1:{port}/health", timeout=3)
+        return response.status_code == 200 and response.json().get("status") == "ok"
+    except Exception:
+        return False
 
 def _get_assistant_mode() -> str:
     return os.getenv("ASSISTANT_MODE", "").strip().upper()
@@ -41,6 +52,7 @@ def start_terminal_chat() -> None:
         answer = answer_question(user_message)
         print(f"Assistant: {answer}")
 
+
 async def main():
     ensure_assistant_database()
     initialize_assistant_database()
@@ -60,4 +72,7 @@ async def main():
     )
 
 if __name__ == "__main__":
+    if is_service_up():
+        print("Service is already running. Exiting...")
+        sys.exit(0)
     asyncio.run(main())
